@@ -1,0 +1,1 @@
+from app.blueprints.mechanics.routes import mechanics_bp
