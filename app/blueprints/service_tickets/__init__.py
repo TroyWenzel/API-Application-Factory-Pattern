@@ -1,0 +1,1 @@
+from app.blueprints.service_tickets.routes import service_tickets_bp
