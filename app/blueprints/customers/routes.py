@@ -3,9 +3,11 @@ from app.blueprints.customers.schemas import customer_schema, customers_schema
 from flask import jsonify, request
 from marshmallow import ValidationError
 from app.models import db, Customers
+from app.extensions import limiter
 
 # CREATE CUSTOMER ROUTE
 @customers_bp.route('', methods=['POST'])
+@limiter.limit("2 per day")
 def create_customer():
     try:
         new_customer = customer_schema.load(request.json)
@@ -32,6 +34,7 @@ def read_customer(customer_id):
 
 # Delete a Customer
 @customers_bp.route("/<int:customer_id>", methods=["DELETE"])
+@limiter.limit("5 per day")
 def delete_customer(customer_id):
     customer = db.session.get(Customers, customer_id)
     if not customer:
@@ -57,4 +60,20 @@ def update_customer(customer_id):
             setattr(customer, attr, getattr(updated_customer, attr))
     
     db.session.commit()
+    return customer_schema.jsonify(customer), 200
+
+# SEARCH CUSTOMER BY EMAIL (case-insensitive)
+@customers_bp.route('/search', methods=['GET'])
+def search_customer_by_email():
+    email = request.args.get('email')
+    
+    if not email:
+        return jsonify({'error': 'Email parameter is required'}), 400
+    
+    # Case-insensitive search
+    customer = db.session.query(Customers).filter(Customers.email.ilike(email)).first()
+    
+    if not customer:
+        return jsonify({'error': 'Customer not found'}), 404
+    
     return customer_schema.jsonify(customer), 200

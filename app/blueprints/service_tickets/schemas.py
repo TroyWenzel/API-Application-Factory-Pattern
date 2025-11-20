@@ -7,6 +7,7 @@ class ServiceTicketSchema(ma.SQLAlchemyAutoSchema):
         model = ServiceTickets
         load_instance = True
         include_fk = True
+        exclude = ('mechanics',) # Exclude the relationship to avoid serialization issues
 
 
 

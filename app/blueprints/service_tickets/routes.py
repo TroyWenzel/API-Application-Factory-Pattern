@@ -1,54 +1,162 @@
+from app.blueprints.service_tickets import service_tickets_bp
 from flask import Blueprint, request, jsonify
 from marshmallow import ValidationError
-from app.models import db
-from app.blueprints.service_tickets.schemas import service_ticket_schema
+from app.blueprints.service_tickets.schemas import service_ticket_schema, service_tickets_schema
+from app.models import db, ServiceTickets, Mechanics
+from app.extensions import limiter
+from app.util.auth import token_required
 
-service_tickets_bp = Blueprint('service_tickets', __name__)
-
-
+# CREATE SERVICE TICKET
 @service_tickets_bp.route('', methods=['POST'])
+@limiter.limit("10 per day")
+@token_required
 def create_service_ticket():
     try:
-        new_ticket = service_ticket_schema.load(request.json)
+        service_ticket = service_ticket_schema.load(request.json)
     except ValidationError as e:
         return jsonify(e.messages), 400
-
-    db.session.add(new_ticket)
+    
+    db.session.add(service_ticket)
     db.session.commit()
-    return service_ticket_schema.jsonify(new_ticket), 201
+    return service_ticket_schema.jsonify(service_ticket), 201
 
 
+# READ ALL SERVICE TICKETS - PAGINATED
 @service_tickets_bp.route('', methods=['GET'])
-def read_tickets():
-    tickets = ServiceTickets.query.all()
-    return tickets_schema.jsonify(tickets), 200
-
-
-@service_tickets_bp.route('/<int:ticket_id>', methods=['PUT'])
-def update_ticket(ticket_id):
-    ticket = db.session.get(ServiceTickets, ticket_id)
-    if not ticket:
-        return jsonify({'error': 'Ticket not found'}), 404
-
+@token_required
+def read_service_tickets():
+    # Get pagination parameters from query string (default: page 1, 10 items per page)
     try:
-        updated = ticket_schema.load(request.json)
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 5, type=int)
+    
+    # Query with pagination
+        query = db.session.query(ServiceTickets)
+        paginated_tickets = db.paginate(query, page=page, per_page=per_page)
+        return service_tickets_schema.jsonify(paginated_tickets), 200
+    except:
+        # If pagination parameters are missing or invalid, return all tickets
+        tickets = db.session.query(ServiceTickets).all()
+        return service_tickets_schema.jsonify(tickets), 200
+    
+
+# READ INDIVIDUAL SERVICE TICKET
+@service_tickets_bp.route('/<int:ticket_id>', methods=['GET'])
+def read_service_ticket(ticket_id):
+    ticket = db.session.get(ServiceTickets, ticket_id)
+    
+    if not ticket:
+        return jsonify({'error': 'Service ticket not found'}), 404
+    
+    return service_ticket_schema.jsonify(ticket), 200
+
+
+# UPDATE SERVICE TICKET - Requires Token
+@service_tickets_bp.route('/<int:ticket_id>', methods=['PUT'])
+@token_required
+def update_service_ticket(ticket_id):
+    ticket = db.session.get(ServiceTickets, ticket_id)
+    
+    if not ticket:
+        return jsonify({'error': 'Service ticket not found'}), 404
+    
+    # Verify the mechanic is assigned to this ticket
+    mechanic_id = request.logged_in_mechanic_id
+    
+    # Check if the logged-in mechanic is in the list of mechanics for this ticket
+    if not any(mechanic.id == mechanic_id for mechanic in ticket.mechanics):
+        return jsonify({'error': 'Unauthorized to update this ticket'}), 403
+    
+    try:
+        data = request.json
+        
+        # Handle mechanic assignment if mechanic_ids is in the request
+        if 'mechanic_ids' in data:
+            # Clear existing mechanics and add new ones
+            ticket.mechanics.clear()
+            for mid in data['mechanic_ids']:
+                mechanic = db.session.get(Mechanics, mid)
+                if mechanic:
+                    ticket.mechanics.append(mechanic)
+            del data['mechanic_ids']  # Remove from data so it doesn't try to set as attribute
+        
+        # Update other fields
+        for key, value in data.items():
+            if hasattr(ticket, key) and key != 'mechanics':  # Skip the relationship
+                setattr(ticket, key, value)
     except ValidationError as e:
         return jsonify(e.messages), 400
-
-    for attr in ['customer_id', 'mechanic_id', 'description', 'status']:
-        if hasattr(updated, attr):
-            setattr(ticket, attr, getattr(updated, attr))
-
+    
     db.session.commit()
-    return ticket_schema.jsonify(ticket), 200
+    return service_ticket_schema.jsonify(ticket), 200
 
 
+# DELETE SERVICE TICKET - Requires Token
 @service_tickets_bp.route('/<int:ticket_id>', methods=['DELETE'])
-def delete_ticket(ticket_id):
+@limiter.limit("5 per day")
+@token_required
+def delete_service_ticket(ticket_id):
     ticket = db.session.get(ServiceTickets, ticket_id)
+    
     if not ticket:
-        return jsonify({'error': 'Ticket not found'}), 404
-
+        return jsonify({'error': 'Service ticket not found'}), 404
+    
+    # Verify the mechanic is assigned to this ticket
+    mechanic_id = request.logged_in_mechanic_id
+    
+    # Check if the logged-in mechanic is in the list of mechanics for this ticket
+    if not any(mechanic.id == mechanic_id for mechanic in ticket.mechanics):
+        return jsonify({'error': 'Unauthorized to delete this ticket'}), 403
+    
     db.session.delete(ticket)
     db.session.commit()
-    return jsonify({'message': 'Ticket deleted'}), 200
+    return jsonify({'message': f'Service ticket {ticket_id} deleted'}), 200
+
+# ASSIGN MECHANIC TO TICKET
+@service_tickets_bp.route('/<int:ticket_id>/mechanics/<int:mechanic_id>', methods=['POST'])
+@token_required
+def assign_mechanic_to_ticket(ticket_id, mechanic_id):
+    ticket = db.session.get(ServiceTickets, ticket_id)
+    
+    if not ticket:
+        return jsonify({'error': 'Service ticket not found'}), 404
+    
+    mechanic = db.session.get(Mechanics, mechanic_id)
+    
+    if not mechanic:
+        return jsonify({'error': 'Mechanic not found'}), 404
+    
+    # Check if mechanic is already assigned
+    if mechanic in ticket.mechanics:
+        return jsonify({'error': 'Mechanic already assigned to this ticket'}), 400
+    
+    # Add mechanic to the ticket
+    ticket.mechanics.append(mechanic)
+    db.session.commit()
+    
+    return jsonify({'message': f'Mechanic {mechanic.first_name} {mechanic.last_name} assigned to ticket {ticket_id}'}), 200
+
+
+# REMOVE MECHANIC FROM TICKET
+@service_tickets_bp.route('/<int:ticket_id>/mechanics/<int:mechanic_id>', methods=['DELETE'])
+@token_required
+def remove_mechanic_from_ticket(ticket_id, mechanic_id):
+    ticket = db.session.get(ServiceTickets, ticket_id)
+    
+    if not ticket:
+        return jsonify({'error': 'Service ticket not found'}), 404
+    
+    mechanic = db.session.get(Mechanics, mechanic_id)
+    
+    if not mechanic:
+        return jsonify({'error': 'Mechanic not found'}), 404
+    
+    # Check if mechanic is assigned
+    if mechanic not in ticket.mechanics:
+        return jsonify({'error': 'Mechanic not assigned to this ticket'}), 400
+    
+    # Remove mechanic from the ticket
+    ticket.mechanics.remove(mechanic)
+    db.session.commit()
+    
+    return jsonify({'message': f'Mechanic {mechanic.first_name} {mechanic.last_name} removed from ticket {ticket_id}'}), 200
