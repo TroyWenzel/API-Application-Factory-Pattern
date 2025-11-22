@@ -2,9 +2,10 @@ from app.blueprints.service_tickets import service_tickets_bp
 from flask import Blueprint, request, jsonify
 from marshmallow import ValidationError
 from app.blueprints.service_tickets.schemas import service_ticket_schema, service_tickets_schema
-from app.models import db, ServiceTickets, Mechanics
+from app.models import db, ServiceTickets, Mechanics, Parts
 from app.extensions import limiter
 from app.util.auth import token_required
+from app.blueprints.parts.schemas import parts_schema
 
 # CREATE SERVICE TICKET
 @service_tickets_bp.route('', methods=['POST'])
@@ -70,15 +71,15 @@ def update_service_ticket(ticket_id):
     try:
         data = request.json
         
-        # Handle mechanic assignment if mechanic_ids is in the request
-        if 'mechanic_ids' in data:
+        # Handle mechanic assignment if mechanic_id is in the request
+        if 'mechanic_id' in data:
             # Clear existing mechanics and add new ones
             ticket.mechanics.clear()
-            for mid in data['mechanic_ids']:
+            for mid in data['mechanic_id']:
                 mechanic = db.session.get(Mechanics, mid)
                 if mechanic:
                     ticket.mechanics.append(mechanic)
-            del data['mechanic_ids']  # Remove from data so it doesn't try to set as attribute
+            del data['mechanic_id']  # Remove from data so it doesn't try to set as attribute
         
         # Update other fields
         for key, value in data.items():
@@ -160,3 +161,65 @@ def remove_mechanic_from_ticket(ticket_id, mechanic_id):
     db.session.commit()
     
     return jsonify({'message': f'Mechanic {mechanic.first_name} {mechanic.last_name} removed from ticket {ticket_id}'}), 200
+
+# ADD PART TO SERVICE TICKET
+@service_tickets_bp.route('/<int:ticket_id>/parts/<int:part_id>', methods=['POST'])
+@token_required
+def add_part_to_ticket(ticket_id, part_id):
+    ticket = db.session.get(ServiceTickets, ticket_id)
+    
+    if not ticket:
+        return jsonify({'error': 'Service ticket not found'}), 404
+    
+    part = db.session.get(Parts, part_id)
+    
+    if not part:
+        return jsonify({'error': 'Part not found'}), 404
+    
+    # Check if part is already assigned to a ticket
+    if part.ticket_id is not None:
+        return jsonify({'error': f'Part already assigned to ticket {part.ticket_id}'}), 400
+    
+    # Assign the part to the ticket
+    part.ticket_id = ticket_id
+    db.session.commit()
+    
+    return jsonify({'message': f'Part {part_id} successfully added to ticket {ticket_id}','part_id': part.id,'ticket_id': ticket.id}), 200
+
+
+# REMOVE PART FROM SERVICE TICKET
+@service_tickets_bp.route('/<int:ticket_id>/parts/<int:part_id>', methods=['DELETE'])
+@token_required
+def remove_part_from_ticket(ticket_id, part_id):
+    ticket = db.session.get(ServiceTickets, ticket_id)
+    
+    if not ticket:
+        return jsonify({'error': 'Service ticket not found'}), 404
+    
+    part = db.session.get(Parts, part_id)
+    
+    if not part:
+        return jsonify({'error': 'Part not found'}), 404
+    
+    # Check if part is assigned to this ticket
+    if part.ticket_id != ticket_id:
+        return jsonify({'error': 'Part not assigned to this ticket'}), 400
+    
+    # Remove the part from the ticket
+    part.ticket_id = None
+    db.session.commit()
+    
+    return jsonify({'message': f'Part {part_id} removed from ticket {ticket_id}'}), 200
+
+
+# GET ALL PARTS FOR A TICKET
+@service_tickets_bp.route('/<int:ticket_id>/parts', methods=['GET'])
+def get_ticket_parts(ticket_id):
+    ticket = db.session.get(ServiceTickets, ticket_id)
+    
+    if not ticket:
+        return jsonify({'error': 'Service ticket not found'}), 404
+    
+    parts = db.session.query(Parts).filter(Parts.ticket_id == ticket_id).all()
+    
+    return parts_schema.jsonify(parts), 200

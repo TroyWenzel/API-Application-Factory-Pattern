@@ -3,7 +3,7 @@ from app.blueprints.customers.schemas import customer_schema, customers_schema
 from flask import jsonify, request
 from marshmallow import ValidationError
 from app.models import db, Customers
-from app.extensions import limiter
+from app.extensions import limiter, cache
 
 # CREATE CUSTOMER ROUTE
 @customers_bp.route('', methods=['POST'])
@@ -18,11 +18,16 @@ def create_customer():
     db.session.commit()
     return customer_schema.jsonify(new_customer), 201
 
-# READ CUSTOMERS ROUTE
+# READ CUSTOMERS ROUTE - PAGINATED WITH CACHING
 @customers_bp.route("", methods=["GET"])
+@cache.cached(timeout=60, query_string=True)
 def read_customers():
-    customers = db.session.query(Customers).all()
-    return customers_schema.jsonify(customers), 200
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    query = db.session.query(Customers)
+    paginated_customers = db.paginate(query, page=page, per_page=per_page)
+    return customers_schema.jsonify(paginated_customers), 200
 
 # Read Individual Customer
 @customers_bp.route('/<int:customer_id>', methods=['GET'])
