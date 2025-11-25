@@ -62,7 +62,7 @@ def update_service_ticket(ticket_id):
         return jsonify({'error': 'Service ticket not found'}), 404
     
     # Verify the mechanic is assigned to this ticket
-    mechanic_id = request.logged_in_mechanic_id
+    mechanic_id = int(request.logged_in_mechanic_id)
     
     # Check if the logged-in mechanic is in the list of mechanics for this ticket
     if not any(mechanic.id == mechanic_id for mechanic in ticket.mechanics):

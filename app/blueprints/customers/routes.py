@@ -33,7 +33,7 @@ def login():
 
 # CREATE CUSTOMER ROUTE
 @customers_bp.route('', methods=['POST'])
-@limiter.limit("2 per day")
+@limiter.limit("30 per day")
 def create_customer():
     try:
         data = request.json
@@ -151,7 +151,7 @@ def search_customer_by_email():
         return jsonify({'error': 'Email parameter is required'}), 400
     
     # Case-insensitive search
-    customer = db.session.query(Customers).filter(Customers.email.ilike(email)).first()
+    customer = db.session.query(Customers).filter(Customers.email.ilike(email)).first() # type: ignore
     
     if not customer:
         return jsonify({'error': 'Customer not found'}), 404
