@@ -10,6 +10,7 @@ Flask-Limiter==4.0.0
 flask-marshmallow==1.3.0
 Flask-SQLAlchemy==3.1.1
 greenlet==3.2.4
+iniconfig==2.3.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
 limits==5.6.0
@@ -20,8 +21,10 @@ marshmallow-sqlalchemy==1.4.2
 mdurl==0.1.2
 ordered-set==4.1.0
 packaging==25.0
+pluggy==1.6.0
 pyasn1==0.6.1
 Pygments==2.19.2
+pytest==9.0.1
 python-jose==3.5.0
 rich==14.2.0
 rsa==4.9.1

@@ -11,14 +11,17 @@ from app.util.auth import encode_token, customer_token_required
 @customers_bp.route('/login', methods=['POST'])
 @limiter.limit("5 per 10 minute")
 def login():
+    from sqlalchemy import select
+    
     try:
         data = request.json
         customer_login_schema.load(data)
     except ValidationError as e:
         return jsonify(e.messages), 400
     
-    # Find customer by email
-    customer = db.session.query(Customers).filter_by(email=data['email']).first()
+    # Find customer by email using select()
+    query = select(Customers).where(Customers.email == data['email'])
+    customer = db.session.execute(query).scalar_one_or_none()
     
     # Verify customer exists and password is correct
     if customer and check_password_hash(customer.password, str(data['password'])):
@@ -45,8 +48,13 @@ def create_customer():
     if 'password' in data:
         new_customer.password = generate_password_hash(str(data['password']))
     
-    db.session.add(new_customer)
-    db.session.commit()
+    try:
+        db.session.add(new_customer)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to create customer. Email may already exist."}), 400
+    
     return customer_schema.jsonify(new_customer), 201
 
 
@@ -54,10 +62,13 @@ def create_customer():
 @customers_bp.route('/my-tickets', methods=['GET'])
 @customer_token_required
 def get_my_tickets():
+    from sqlalchemy import select
+    
     customer_id = request.logged_in_customer_id
     
-    # Get all service tickets for this customer
-    tickets = db.session.query(ServiceTickets).filter_by(customer_id=customer_id).all()
+    # Get all service tickets for this customer using select()
+    query = select(ServiceTickets).where(ServiceTickets.customer_id == customer_id)
+    tickets = db.session.execute(query).scalars().all()
     
     if not tickets:
         return jsonify({"message": "No service tickets found"}), 200
@@ -84,12 +95,22 @@ def get_profile():
 @customers_bp.route("", methods=["GET"])
 @cache.cached(timeout=60, query_string=True)
 def read_customers():
+    from sqlalchemy import select
+    
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
-    query = db.session.query(Customers)
-    paginated_customers = db.paginate(query, page=page, per_page=per_page)
-    return customers_schema.jsonify(paginated_customers), 200
+    # Query all customers with pagination using select()
+    query = select(Customers)
+    
+    # Use paginate but handle out of range pages gracefully
+    try:
+        paginated_customers = db.paginate(query, page=page, per_page=per_page, error_out=False)
+        # Return the items from the pagination object
+        return customers_schema.jsonify(paginated_customers.items), 200
+    except Exception as e:
+        # If pagination fails, return empty list
+        return jsonify([]), 200
 
 
 # Read Individual Customer
@@ -145,13 +166,16 @@ def update_customer():
 # SEARCH CUSTOMER BY EMAIL (case-insensitive)
 @customers_bp.route('/search', methods=['GET'])
 def search_customer_by_email():
+    from sqlalchemy import select
+    
     email = request.args.get('email')
     
     if not email:
         return jsonify({'error': 'Email parameter is required'}), 400
     
-    # Case-insensitive search
-    customer = db.session.query(Customers).filter(Customers.email.ilike(email)).first() # type: ignore
+    # Case-insensitive search using select()
+    query = select(Customers).where(Customers.email.ilike(email))
+    customer = db.session.execute(query).scalar_one_or_none()
     
     if not customer:
         return jsonify({'error': 'Customer not found'}), 404
