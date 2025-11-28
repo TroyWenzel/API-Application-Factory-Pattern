@@ -19,7 +19,7 @@ def sample_customer(app):
         customer = Customers(
             first_name="John",
             last_name="Doe",
-            email="john.doe@example.com",
+            email="john.doe@email.com",
             password=generate_password_hash("password123"),
             phone="555-1234"
         )
@@ -78,7 +78,7 @@ class TestCustomerLogin:
     def test_login_success(self, client, sample_customer):
         # Test successful login with valid credentials
         response = client.post('/customers/login', json={
-            'email': 'john.doe@example.com',
+            'email': 'john.doe@email.com',
             'password': 'password123'
         })
         
@@ -90,7 +90,7 @@ class TestCustomerLogin:
     def test_login_invalid_password(self, client, sample_customer):
         # Test login with incorrect password
         response = client.post('/customers/login', json={
-            'email': 'john.doe@example.com',
+            'email': 'john.doe@email.com',
             'password': 'wrongpassword'
         })
         
@@ -101,7 +101,7 @@ class TestCustomerLogin:
     def test_login_nonexistent_user(self, client):
         # Test login with non-existent email
         response = client.post('/customers/login', json={
-            'email': 'nonexistent@example.com',
+            'email': 'nonexistent@email.com',
             'password': 'password123'
         })
         
@@ -112,7 +112,7 @@ class TestCustomerLogin:
     def test_login_missing_fields(self, client):
         # Test login with missing required fields
         response = client.post('/customers/login', json={
-            'email': 'john.doe@example.com'
+            'email': 'john.doe@email.com'
         })
         
         assert response.status_code == 400
@@ -135,20 +135,20 @@ class TestCreateCustomer:
         response = client.post('/customers', json={
             'first_name': 'Jane',
             'last_name': 'Smith',
-            'email': 'jane.smith@example.com',
+            'email': 'jane.smith@email.com',
             'password': 'securepass123',
             'phone': '555-5678'
         })
         
         assert response.status_code == 201
         data = json.loads(response.data)
-        assert data['email'] == 'jane.smith@example.com'
+        assert data['email'] == 'jane.smith@email.com'
         assert data['first_name'] == 'Jane'
         
         # Cleanup
         with app.app_context():
             customer = db.session.query(Customers).filter_by(
-                email='jane.smith@example.com'
+                email='jane.smith@email.com'
             ).first()
             if customer:
                 db.session.delete(customer)
@@ -158,7 +158,7 @@ class TestCreateCustomer:
         # Test customer creation with missing required fields
         response = client.post('/customers', json={
             'first_name': 'Jane',
-            'email': 'jane@example.com'
+            'email': 'jane@email.com'
         })
         
         assert response.status_code == 400
@@ -180,7 +180,7 @@ class TestCreateCustomer:
         response = client.post('/customers', json={
             'first_name': 'Jane',
             'last_name': 'Smith',
-            'email': 'john.doe@example.com',
+            'email': 'john.doe@email.com',
             'password': 'password123',
             'phone': '555-0000'
         })
@@ -323,7 +323,7 @@ class TestDeleteCustomer:
             customer = Customers(
                 first_name="Delete",
                 last_name="Me",
-                email="delete.me@example.com",
+                email="delete.me@email.com",
                 password=generate_password_hash("password123"),
                 phone="555-0000"
             )
@@ -434,7 +434,7 @@ class TestSearchCustomerByEmail:
     
     def test_search_customer_not_found(self, client):
         # Test searching for non-existent customer email
-        response = client.get('/customers/search?email=nonexistent@example.com')
+        response = client.get('/customers/search?email=nonexistent@email.com')
         
         assert response.status_code == 404
         data = json.loads(response.data)
@@ -454,3 +454,5 @@ class TestSearchCustomerByEmail:
         response = client.get('/customers/search?email=')
         
         assert response.status_code == 400
+        
+# Make sure to use "pytest app/tests/test_pytest_customer.py -v" when running this

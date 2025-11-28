@@ -467,6 +467,7 @@ class TestSearchCustomerByEmail(BaseTestCase):
         
         self.assertEqual(response.status_code, 400)
 
-
+# This allows you to run the test file directly as a script:
+# python app/tests/test_customer.py
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() # avoids the need to run python -m unittest app/tests/test_customer.py or python -m unittest discover app/tests
