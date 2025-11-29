@@ -1,6 +1,7 @@
 from app.blueprints.service_tickets import service_tickets_bp
 from flask import Blueprint, request, jsonify
 from marshmallow import ValidationError
+from sqlalchemy import select
 from app.blueprints.service_tickets.schemas import service_ticket_schema, service_tickets_schema
 from app.models import db, ServiceTickets, Mechanics, Parts
 from app.extensions import limiter
@@ -26,18 +27,18 @@ def create_service_ticket():
 @service_tickets_bp.route('', methods=['GET'])
 @token_required
 def read_service_tickets():
-    # Get pagination parameters from query string (default: page 1, 10 items per page)
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 5, type=int)
     
-    # Query with pagination
-        query = db.session.query(ServiceTickets)
-        paginated_tickets = db.paginate(query, page=page, per_page=per_page)
-        return service_tickets_schema.jsonify(paginated_tickets), 200
+        # Query with pagination using select()
+        query = select(ServiceTickets)
+        paginated_tickets = db.paginate(query, page=page, per_page=per_page, error_out=False)
+        return service_tickets_schema.jsonify(paginated_tickets.items), 200
     except:
         # If pagination parameters are missing or invalid, return all tickets
-        tickets = db.session.query(ServiceTickets).all()
+        query = select(ServiceTickets)
+        tickets = db.session.execute(query).scalars().all()
         return service_tickets_schema.jsonify(tickets), 200
     
 
@@ -103,7 +104,7 @@ def delete_service_ticket(ticket_id):
         return jsonify({'error': 'Service ticket not found'}), 404
     
     # Verify the mechanic is assigned to this ticket
-    mechanic_id = request.logged_in_mechanic_id
+    mechanic_id = int(request.logged_in_mechanic_id)
     
     # Check if the logged-in mechanic is in the list of mechanics for this ticket
     if not any(mechanic.id == mechanic_id for mechanic in ticket.mechanics):
@@ -220,6 +221,7 @@ def get_ticket_parts(ticket_id):
     if not ticket:
         return jsonify({'error': 'Service ticket not found'}), 404
     
-    parts = db.session.query(Parts).filter(Parts.ticket_id == ticket_id).all()
+    query = select(Parts).where(Parts.ticket_id == ticket_id)
+    parts = db.session.execute(query).scalars().all()
     
     return parts_schema.jsonify(parts), 200
