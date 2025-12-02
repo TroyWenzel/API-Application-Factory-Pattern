@@ -96,7 +96,7 @@ def update_service_ticket(ticket_id):
 # DELETE SERVICE TICKET - Requires Token
 @service_tickets_bp.route('/<int:ticket_id>', methods=['DELETE'])
 @limiter.limit("5 per day")
-@token_required
+@mechanic_token_required
 def delete_service_ticket(ticket_id):
     ticket = db.session.get(ServiceTickets, ticket_id)
     
@@ -116,7 +116,7 @@ def delete_service_ticket(ticket_id):
 
 # ASSIGN MECHANIC TO TICKET
 @service_tickets_bp.route('/<int:ticket_id>/mechanics/<int:mechanic_id>', methods=['POST'])
-@token_required
+@mechanic_token_required
 def assign_mechanic_to_ticket(ticket_id, mechanic_id):
     ticket = db.session.get(ServiceTickets, ticket_id)
     
@@ -141,7 +141,7 @@ def assign_mechanic_to_ticket(ticket_id, mechanic_id):
 
 # REMOVE MECHANIC FROM TICKET
 @service_tickets_bp.route('/<int:ticket_id>/mechanics/<int:mechanic_id>', methods=['DELETE'])
-@token_required
+@mechanic_token_required
 def remove_mechanic_from_ticket(ticket_id, mechanic_id):
     ticket = db.session.get(ServiceTickets, ticket_id)
     
@@ -165,7 +165,7 @@ def remove_mechanic_from_ticket(ticket_id, mechanic_id):
 
 # ADD PART TO SERVICE TICKET
 @service_tickets_bp.route('/<int:ticket_id>/parts/<int:part_id>', methods=['POST'])
-@token_required
+@mechanic_token_required
 def add_part_to_ticket(ticket_id, part_id):
     ticket = db.session.get(ServiceTickets, ticket_id)
     
@@ -190,7 +190,7 @@ def add_part_to_ticket(ticket_id, part_id):
 
 # REMOVE PART FROM SERVICE TICKET
 @service_tickets_bp.route('/<int:ticket_id>/parts/<int:part_id>', methods=['DELETE'])
-@token_required
+@mechanic_token_required
 def remove_part_from_ticket(ticket_id, part_id):
     ticket = db.session.get(ServiceTickets, ticket_id)
     
