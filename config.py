@@ -5,16 +5,22 @@ class DevelopmentConfig:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///app.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = True
+    CACHE_TYPE = "SimpleCache"
+    CACHE_DEFAULT_TIMEOUT = 300
     
 class TestingConfig:
     SECRET_KEY = 'test-secret-key-for-testing'
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # Use in-memory DB for faster tests
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     TESTING = True
-    WTF_CSRF_ENABLED = False  # Disable CSRF for testing
+    WTF_CSRF_ENABLED = False
+    CACHE_TYPE = "SimpleCache"
+    CACHE_DEFAULT_TIMEOUT = 300
 
 class ProductionConfig:
-    SECRET_KEY = os.environ.get('SECRET_KEY')  # Must be set in production
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///production.db'
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or 'sqlite:///production.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = False
+    CACHE_TYPE = "SimpleCache"
+    CACHE_DEFAULT_TIMEOUT = 300

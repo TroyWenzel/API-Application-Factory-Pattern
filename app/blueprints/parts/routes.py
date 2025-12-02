@@ -1,6 +1,7 @@
 from app.blueprints.parts import parts_bp
 from flask import jsonify, request
 from marshmallow import ValidationError
+from sqlalchemy import select
 from app.models import db, Inventory, Parts
 from app.blueprints.parts.schemas import inventory_schema, inventories_schema, part_schema, parts_schema
 from app.extensions import limiter
@@ -24,7 +25,8 @@ def create_inventory():
 # READ ALL INVENTORY
 @parts_bp.route('/inventory', methods=['GET'])
 def read_inventory():
-    inventory_items = db.session.query(Inventory).all()
+    query = select(Inventory)
+    inventory_items = db.session.execute(query).scalars().all()
     return inventories_schema.jsonify(inventory_items), 200
 
 # READ SINGLE INVENTORY ITEM
@@ -90,7 +92,8 @@ def create_part():
 # READ ALL PARTS
 @parts_bp.route('', methods=['GET'])
 def read_parts():
-    parts = db.session.query(Parts).all()
+    query = select(Parts)
+    parts = db.session.execute(query).scalars().all()
     return parts_schema.jsonify(parts), 200
 
 # READ SINGLE PART
@@ -112,16 +115,24 @@ def update_part(part_id):
     if not part:
         return jsonify({'error': 'Part not found'}), 404
     
-    try:
-        data = request.json
-        for key, value in data.items():
-            if hasattr(part, key):
-                setattr(part, key, value)
-    except ValidationError as e:
-        return jsonify(e.messages), 400
+    data = request.json
+    
+    # Only update ticket_id if provided in request
+    if 'ticket_id' in data:
+        part.ticket_id = data['ticket_id']
+    
+    # Only update desc_id if provided and not None
+    if 'desc_id' in data and data['desc_id'] is not None:
+        part.desc_id = data['desc_id']
     
     db.session.commit()
-    return part_schema.jsonify(part), 200
+    
+    # Return plain dict
+    return jsonify({
+        'id': part.id,
+        'desc_id': part.desc_id,
+        'ticket_id': part.ticket_id
+    }), 200
 
 # DELETE PART
 @parts_bp.route('/<int:part_id>', methods=['DELETE'])
@@ -139,5 +150,6 @@ def delete_part(part_id):
 # GET AVAILABLE PARTS (parts not assigned to any ticket)
 @parts_bp.route('/available', methods=['GET'])
 def get_available_parts():
-    available_parts = db.session.query(Parts).filter(Parts.ticket_id == None).all()
+    query = select(Parts).where(Parts.ticket_id == None)
+    available_parts = db.session.execute(query).scalars().all()
     return parts_schema.jsonify(available_parts), 200

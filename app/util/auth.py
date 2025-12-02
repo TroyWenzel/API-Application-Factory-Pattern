@@ -1,72 +1,67 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt
+import jose
 from functools import wraps
 from flask import request, jsonify
-import jose.exceptions
+import os
 
-SECRET_KEY = "your_secret_key"
+SECRET_KEY = os.environ.get('SECRET_KEY') or 'super secret secrets'
 
-def encode_token(user_id, role="mechanic"):
+def encode_token(user_id, role="user"):
     payload = {
-        "exp": datetime.now(tz=timezone.utc) + timedelta(days=0, hours=1),
-        "iat": datetime.now(tz=timezone.utc),
-        "sub": str(user_id),
-        "role": role
+        'exp': datetime.now(timezone.utc) + timedelta(days=0, hours=1),
+        'iat': datetime.now(timezone.utc),
+        'sub': str(user_id),
+        'role': role
     }
-    
-    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-    return token
 
+    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+    return token
 
 def token_required(f):
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decoration(*args, **kwargs):
         token = None
+
         if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].replace("Bearer", "").strip()
+            token = request.headers['Authorization'].split()[1]
         
         if not token:
-            return jsonify({"error": "Token is missing!"}), 401
+            return jsonify({"error": "token missing from authorization headers"}), 401
         
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            
-            # Check if role is mechanic
-            if data.get('role') != 'mechanic':
-                return jsonify({"error": "Unauthorized. Mechanic access required."}), 403
-            
-            request.logged_in_mechanic_id = data['sub']
+            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            request.logged_in_user_id = data['sub']
         except jose.exceptions.ExpiredSignatureError:
-            return jsonify({"error": "Token has expired!"}), 403
+            return jsonify({'message':'token is expired'}), 403
         except jose.exceptions.JWTError:
-            return jsonify({"error": "Token is invalid!"}), 401
+            return jsonify({'message':'invalid token'}), 401
         
         return f(*args, **kwargs)
-    return decorated
+    
+    return decoration
 
-
-def customer_token_required(f):
+def admin_required(f):
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decoration(*args, **kwargs):
         token = None
+
         if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].replace("Bearer", "").strip()
+            token = request.headers['Authorization'].split()[1]
         
         if not token:
-            return jsonify({"error": "Token is missing!"}), 401
+            return jsonify({"error": "token missing from authorization headers"}), 401
         
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            
-            # Check if role is customer
-            if data.get('role') != 'customer':
-                return jsonify({"error": "Unauthorized. Customer access required."}), 403
-            
-            request.logged_in_customer_id = data['sub']
+            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            request.logged_in_user_id = data['sub']
+            if data['role'].lower() != "admin":
+                return jsonify({"message": "Admin permissions required."}), 403
         except jose.exceptions.ExpiredSignatureError:
-            return jsonify({"error": "Token has expired!"}), 403
+            return jsonify({'message':'token is expired'}), 403
         except jose.exceptions.JWTError:
-            return jsonify({"error": "Token is invalid!"}), 401
+            return jsonify({'message':'invalid token'}), 401
         
         return f(*args, **kwargs)
-    return decorated
+    
+    return decoration
