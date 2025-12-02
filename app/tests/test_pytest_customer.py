@@ -6,7 +6,7 @@ from datetime import date
 from werkzeug.security import generate_password_hash
 
 # Add parent directory to path to import app modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app.models import db, Customers, ServiceTickets
 from app.util.auth import encode_token

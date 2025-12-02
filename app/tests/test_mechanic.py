@@ -3,7 +3,7 @@ import os
 from datetime import date
 
 # Add parent directory to path to import app modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app
 from app.models import Mechanics, ServiceTickets, db
@@ -16,7 +16,7 @@ class TestMechanics(unittest.TestCase):
     
     # Runs before each test_method
     def setUp(self):
-        self.app = create_app('testing')
+        self.app = create_app('TestingConfig')
         self.mechanic = Mechanics(
             first_name="Test", 
             last_name="Mechanic", 
@@ -46,8 +46,8 @@ class TestMechanics(unittest.TestCase):
         self.client = self.app.test_client()
     
     # ===== LOGIN TESTS =====
+    # Test successful login with valid credentials
     def test_login(self):
-        """Test successful login with valid credentials"""
         login_creds = {
             "email": "mechanic@email.com",
             "password": "password"
@@ -57,8 +57,8 @@ class TestMechanics(unittest.TestCase):
         self.assertEqual(response.json['message'], "Welcome back, Test!")
         self.assertIn("token", response.json)
     
+    # Negative test: Login with incorrect password
     def test_login_invalid_credentials(self):
-        """Negative test: Login with incorrect password"""
         login_creds = {
             "email": "mechanic@email.com",
             "password": "wrongpassword"
@@ -68,8 +68,8 @@ class TestMechanics(unittest.TestCase):
         self.assertIn("error", response.json)
         self.assertEqual(response.json['error'], "Invalid credentials")
     
+    # Negative test: Login with email that doesn't exist
     def test_login_nonexistent_user(self):
-        """Negative test: Login with email that doesn't exist"""
         login_creds = {
             "email": "nonexistent@email.com",
             "password": "password"
@@ -78,8 +78,8 @@ class TestMechanics(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json['error'], "Invalid credentials")
     
+    # Negative test: Login with missing required fields
     def test_login_missing_fields(self):
-        """Negative test: Login with missing required fields"""
         login_creds = {
             "email": "mechanic@email.com"
         }
@@ -87,8 +87,8 @@ class TestMechanics(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
     
     # ===== CREATE MECHANIC TESTS =====
+    # Test creating a new mechanic
     def test_create_mechanic(self):
-        """Test creating a new mechanic"""
         mechanic_payload = {
             "first_name": "New",
             "last_name": "Mechanic",
@@ -104,8 +104,8 @@ class TestMechanics(unittest.TestCase):
         self.assertEqual(response.json['last_name'], "Mechanic")
         self.assertEqual(response.json['email'], "newmechanic@email.com")
     
+    # Negative test: Create mechanic without required email
     def test_create_mechanic_missing_email(self):
-        """Negative test: Create mechanic without required email"""
         mechanic_payload = {
             "first_name": "New",
             "last_name": "Mechanic",
@@ -116,8 +116,8 @@ class TestMechanics(unittest.TestCase):
         response = self.client.post('/mechanics', json=mechanic_payload)
         self.assertIn(response.status_code, [400, 500])
     
+    # Negative test: Create mechanic with duplicate email
     def test_create_mechanic_duplicate_email(self):
-        """Negative test: Create mechanic with duplicate email"""
         mechanic_payload = {
             "first_name": "Duplicate",
             "last_name": "Mechanic",
@@ -131,16 +131,16 @@ class TestMechanics(unittest.TestCase):
         self.assertIn(response.status_code, [400, 500])
     
     # ===== READ ALL MECHANICS TESTS =====
+    # Test getting all mechanics
     def test_read_mechanics(self):
-        """Test getting all mechanics"""
         response = self.client.get('/mechanics')
         
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json), 2)
         self.assertEqual(response.json[0]['email'], "mechanic@email.com")
     
+    # Negative test: Get mechanics when database is empty
     def test_read_mechanics_empty(self):
-        """Negative test: Get mechanics when database is empty"""
         with self.app.app_context():
             db.session.query(Mechanics).delete()
             db.session.commit()
@@ -150,8 +150,8 @@ class TestMechanics(unittest.TestCase):
         self.assertEqual(len(response.json), 0)
     
     # ===== GET MY TICKETS TESTS =====
+    # Test getting authenticated mechanic's tickets
     def test_get_my_tickets(self):
-        """Test getting authenticated mechanic's tickets"""
         headers = {"Authorization": "Bearer " + self.token}
         
         response = self.client.get('/mechanics/my-tickets', headers=headers)
@@ -159,21 +159,21 @@ class TestMechanics(unittest.TestCase):
         # Initially should be empty list or message
         self.assertTrue(isinstance(response.json, list) or 'message' in response.json)
     
+    # Negative test: Get tickets without authentication
     def test_get_my_tickets_unauthorized(self):
-        """Negative test: Get tickets without authentication"""
         response = self.client.get('/mechanics/my-tickets')
         self.assertEqual(response.status_code, 401)
     
+    # Negative test: Get tickets with invalid token
     def test_get_my_tickets_invalid_token(self):
-        """Negative test: Get tickets with invalid token"""
         headers = {"Authorization": "Bearer invalidtoken123"}
         
         response = self.client.get('/mechanics/my-tickets', headers=headers)
         self.assertEqual(response.status_code, 401)
     
     # ===== GET PROFILE TESTS =====
+    # Test getting authenticated mechanic's profile
     def test_get_profile(self):
-        """Test getting authenticated mechanic's profile"""
         headers = {"Authorization": "Bearer " + self.token}
         
         response = self.client.get('/mechanics/profile', headers=headers)
@@ -182,21 +182,21 @@ class TestMechanics(unittest.TestCase):
         self.assertEqual(response.json['first_name'], "Test")
         self.assertEqual(response.json['last_name'], "Mechanic")
     
+    # Negative test: Get profile without authentication
     def test_get_profile_unauthorized(self):
-        """Negative test: Get profile without authentication"""
         response = self.client.get('/mechanics/profile')
         self.assertEqual(response.status_code, 401)
     
+    # Negative test: Get profile with invalid token
     def test_get_profile_invalid_token(self):
-        """Negative test: Get profile with invalid token"""
         headers = {"Authorization": "Bearer invalidtoken123"}
         
         response = self.client.get('/mechanics/profile', headers=headers)
         self.assertEqual(response.status_code, 401)
     
     # ===== UPDATE MECHANIC TESTS =====
+    # Test updating authenticated mechanic's information
     def test_update_mechanic(self):
-        """Test updating authenticated mechanic's information"""
         headers = {"Authorization": "Bearer " + self.token}
         
         update_payload = {
@@ -211,8 +211,8 @@ class TestMechanics(unittest.TestCase):
         self.assertEqual(response.json['last_name'], "Name")
         self.assertEqual(response.json['email'], "updated@email.com")
     
+    # Test updating mechanic's password (should be hashed)
     def test_update_mechanic_password(self):
-        """Test updating mechanic's password (should be hashed)"""
         headers = {"Authorization": "Bearer " + self.token}
         
         update_payload = {
@@ -227,8 +227,8 @@ class TestMechanics(unittest.TestCase):
             updated_mechanic = db.session.get(Mechanics, 1)
             self.assertTrue(check_password_hash(updated_mechanic.password, 'newpassword123'))
     
+    # Negative test: Update mechanic without authentication
     def test_update_mechanic_unauthorized(self):
-        """Negative test: Update mechanic without authentication"""
         update_payload = {
             "first_name": "Updated"
         }
@@ -236,8 +236,8 @@ class TestMechanics(unittest.TestCase):
         response = self.client.put('/mechanics', json=update_payload)
         self.assertEqual(response.status_code, 401)
     
+    # Negative test: Update mechanic with invalid token
     def test_update_mechanic_invalid_token(self):
-        """Negative test: Update mechanic with invalid token"""
         headers = {"Authorization": "Bearer invalidtoken123"}
         update_payload = {
             "first_name": "Updated"
@@ -247,8 +247,8 @@ class TestMechanics(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
     
     # ===== DELETE MECHANIC TESTS =====
+    # Test deleting authenticated mechanic
     def test_delete_mechanic(self):
-        """Test deleting authenticated mechanic"""
         headers = {"Authorization": "Bearer " + self.token}
         
         response = self.client.delete('/mechanics', headers=headers)
@@ -260,21 +260,21 @@ class TestMechanics(unittest.TestCase):
             deleted_mechanic = db.session.get(Mechanics, 1)
             self.assertIsNone(deleted_mechanic)
     
+    # Negative test: Delete mechanic without authentication
     def test_delete_mechanic_unauthorized(self):
-        """Negative test: Delete mechanic without authentication"""
         response = self.client.delete('/mechanics')
         self.assertEqual(response.status_code, 401)
     
+    # Negative test: Delete mechanic with invalid token
     def test_delete_mechanic_invalid_token(self):
-        """Negative test: Delete mechanic with invalid token"""
         headers = {"Authorization": "Bearer invalidtoken123"}
         
         response = self.client.delete('/mechanics', headers=headers)
         self.assertEqual(response.status_code, 401)
     
     # ===== GET TOP MECHANICS TESTS =====
+    # Test getting top mechanics who have tickets assigned
     def test_get_top_mechanics_with_tickets(self):
-        """Test getting top mechanics who have tickets assigned"""
         with self.app.app_context():
             # Create test tickets
             ticket1 = ServiceTickets(
@@ -320,14 +320,14 @@ class TestMechanics(unittest.TestCase):
         self.assertIn('last_name', response.json[0])
         self.assertIn('email', response.json[0])
     
+    # Negative test: Get top mechanics when no tickets exist
     def test_get_top_mechanics_no_tickets(self):
-        """Negative test: Get top mechanics when no tickets exist"""
         response = self.client.get('/mechanics/top-mechanics')
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'No mechanics found with tickets')
     
+    # Test that top mechanics returns max 5 results
     def test_get_top_mechanics_limit(self):
-        """Test that top mechanics returns max 5 results"""
         with self.app.app_context():
             # Create 6 mechanics with varying ticket counts
             for i in range(3, 9):
