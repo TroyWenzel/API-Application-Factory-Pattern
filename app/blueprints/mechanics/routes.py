@@ -7,7 +7,7 @@ from app.models import db, Mechanics, ServiceTickets, ticket_mechanic
 from app.extensions import limiter
 from app.blueprints.service_tickets.schemas import service_tickets_schema
 from werkzeug.security import generate_password_hash, check_password_hash
-from app.util.auth import encode_token, token_required
+from app.util.auth import encode_token, mechanic_token_required
 
 # LOGIN ROUTE
 @mechanics_bp.route('/login', methods=['POST'])

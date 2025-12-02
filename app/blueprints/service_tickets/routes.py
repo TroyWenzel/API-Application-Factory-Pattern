@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.blueprints.service_tickets.schemas import service_ticket_schema, service_tickets_schema
 from app.models import db, ServiceTickets, Mechanics, Parts
 from app.extensions import limiter
-from app.util.auth import token_required
+from app.util.auth import token_required, mechanic_token_required
 from app.blueprints.parts.schemas import parts_schema
 
 # CREATE SERVICE TICKET
