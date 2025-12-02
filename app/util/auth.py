@@ -65,3 +65,53 @@ def admin_required(f):
         return f(*args, **kwargs)
     
     return decoration
+
+def customer_token_required(f):
+    @wraps(f)
+    def decoration(*args, **kwargs):
+        token = None
+
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split()[1]
+        
+        if not token:
+            return jsonify({"error": "token missing from authorization headers"}), 401
+        
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            request.logged_in_user_id = data['sub']
+            if data.get('role', '').lower() != "customer":
+                return jsonify({"message": "Customer authentication required."}), 403
+        except jose.exceptions.ExpiredSignatureError:
+            return jsonify({'message':'token is expired'}), 403
+        except jose.exceptions.JWTError:
+            return jsonify({'message':'invalid token'}), 401
+        
+        return f(*args, **kwargs)
+    
+    return decoration
+
+def mechanic_token_required(f):
+    @wraps(f)
+    def decoration(*args, **kwargs):
+        token = None
+
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split()[1]
+        
+        if not token:
+            return jsonify({"error": "token missing from authorization headers"}), 401
+        
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            request.logged_in_user_id = data['sub']
+            if data.get('role', '').lower() != "mechanic":
+                return jsonify({"message": "Mechanic authentication required."}), 403
+        except jose.exceptions.ExpiredSignatureError:
+            return jsonify({'message':'token is expired'}), 403
+        except jose.exceptions.JWTError:
+            return jsonify({'message':'invalid token'}), 401
+        
+        return f(*args, **kwargs)
+    
+    return decoration
