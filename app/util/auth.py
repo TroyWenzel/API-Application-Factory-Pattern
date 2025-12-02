@@ -79,7 +79,7 @@ def customer_token_required(f):
         
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-            request.logged_in_customer_id = customer.id
+            request.logged_in_customer_id = data['sub']
             if data.get('role', '').lower() != "customer":
                 return jsonify({"message": "Customer authentication required."}), 403
         except jose.exceptions.ExpiredSignatureError:
@@ -104,7 +104,7 @@ def mechanic_token_required(f):
         
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-            request.logged_in_mechanic_id = mechanic.id
+            request.logged_in_mechanic_id = data['sub']
             if data.get('role', '').lower() != "mechanic":
                 return jsonify({"message": "Mechanic authentication required."}), 403
         except jose.exceptions.ExpiredSignatureError:
