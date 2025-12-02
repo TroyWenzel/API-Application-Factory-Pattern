@@ -11,7 +11,8 @@ from app.blueprints.parts.schemas import parts_schema
 # CREATE SERVICE TICKET
 @service_tickets_bp.route('', methods=['POST'])
 @limiter.limit("10 per day")
-@token_required
+@limiter.limit("5 per day")
+@mechanic_token_required
 def create_service_ticket():
     try:
         service_ticket = service_ticket_schema.load(request.json)
@@ -25,7 +26,8 @@ def create_service_ticket():
 
 # READ ALL SERVICE TICKETS - PAGINATED
 @service_tickets_bp.route('', methods=['GET'])
-@token_required
+@limiter.limit("5 per day")
+@mechanic_token_required
 def read_service_tickets():
     try:
         page = request.args.get('page', 1, type=int)
@@ -55,7 +57,8 @@ def read_service_ticket(ticket_id):
 
 # UPDATE SERVICE TICKET - Requires Token
 @service_tickets_bp.route('/<int:ticket_id>', methods=['PUT'])
-@token_required
+@limiter.limit("5 per day")
+@mechanic_token_required
 def update_service_ticket(ticket_id):
     ticket = db.session.get(ServiceTickets, ticket_id)
     
