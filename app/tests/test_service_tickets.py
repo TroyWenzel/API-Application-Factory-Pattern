@@ -10,7 +10,7 @@ class TestServiceTickets(unittest.TestCase):
     
     def setUp(self):
         # Set up test client and database
-        self.app = create_app('testing')
+        self.app = create_app('TestingConfig')
         
         with self.app.app_context():
             db.drop_all()
@@ -83,8 +83,8 @@ class TestServiceTickets(unittest.TestCase):
         self.client = self.app.test_client()
     
     # ===== CREATE SERVICE TICKET TESTS =====
+    # Test creating a new service ticket with authentication
     def test_create_service_ticket(self):
-        # Test creating a new service ticket with authentication
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         ticket_payload = {
             "customer_id": 1,
@@ -99,8 +99,8 @@ class TestServiceTickets(unittest.TestCase):
         self.assertEqual(response.json['service_desc'], "Brake inspection and replacement")
         self.assertEqual(response.json['VIN'], "1HGBH41JXMN109187")
     
+    # Negative test: Create ticket without authentication
     def test_create_service_ticket_unauthorized(self):
-        # Negative test: Create ticket without authentication
         ticket_payload = {
             "customer_id": 1,
             "service_desc": "Brake inspection",
@@ -112,29 +112,28 @@ class TestServiceTickets(unittest.TestCase):
         response = self.client.post('/tickets', json=ticket_payload)
         self.assertEqual(response.status_code, 401)
     
+    # Negative test: Create ticket with missing required fields
     def test_create_service_ticket_missing_fields(self):
-        # Negative test: Create ticket with missing required fields
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         ticket_payload = {
             "customer_id": 1,
             "service_desc": "Brake inspection"
-            # Missing VIN, service_date, price
         }
         
         response = self.client.post('/tickets', headers=headers, json=ticket_payload)
         self.assertEqual(response.status_code, 400)
     
     # ===== READ ALL SERVICE TICKETS TESTS =====
+    # Test getting all service tickets with authentication
     def test_read_service_tickets(self):
-        # Test getting all service tickets with authentication
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.get('/tickets', headers=headers)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(len(response.json) > 0)
     
+    # Test getting paginated service tickets
     def test_read_service_tickets_paginated(self):
-        # Test getting paginated service tickets
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         # Create additional tickets for pagination
@@ -154,33 +153,33 @@ class TestServiceTickets(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertLessEqual(len(response.json), 5)
     
+    # Negative test: Get tickets without authentication
     def test_read_service_tickets_unauthorized(self):
-        # Negative test: Get tickets without authentication
         response = self.client.get('/tickets')
         self.assertEqual(response.status_code, 401)
     
     # ===== READ INDIVIDUAL SERVICE TICKET TESTS =====
+    # Test getting a specific service ticket
     def test_read_service_ticket(self):
-        # Test getting a specific service ticket
         response = self.client.get('/tickets/1')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['service_desc'], "Oil change and tire rotation")
         self.assertEqual(response.json['VIN'], "1HGBH41JXMN109186")
     
+    # Negative test: Get non-existent ticket
     def test_read_service_ticket_not_found(self):
-        # Negative test: Get non-existent ticket
         response = self.client.get('/tickets/9999')
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Service ticket not found')
     
+    # Negative test: Get ticket with invalid ID format
     def test_read_service_ticket_invalid_id(self):
-        # Negative test: Get ticket with invalid ID format
         response = self.client.get('/tickets/invalid')
         self.assertEqual(response.status_code, 404)
     
     # ===== UPDATE SERVICE TICKET TESTS =====
+    # Test updating a service ticket by assigned mechanic
     def test_update_service_ticket(self):
-        # Test updating a service ticket by assigned mechanic
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         update_payload = {
             "service_desc": "Updated service description",
@@ -192,8 +191,8 @@ class TestServiceTickets(unittest.TestCase):
         self.assertEqual(response.json['service_desc'], "Updated service description")
         self.assertEqual(response.json['price'], 175.00)
     
+    # Negative test: Update ticket by mechanic not assigned to it
     def test_update_service_ticket_unauthorized_mechanic(self):
-        # Negative test: Update ticket by mechanic not assigned to it
         headers = {"Authorization": "Bearer " + self.token_mechanic2}
         update_payload = {
             "service_desc": "Updated description"
@@ -203,8 +202,8 @@ class TestServiceTickets(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json['error'], 'Unauthorized to update this ticket')
     
+    # Negative test: Update non-existent ticket
     def test_update_service_ticket_not_found(self):
-        # Negative test: Update non-existent ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         update_payload = {
             "service_desc": "Updated description"
@@ -214,8 +213,8 @@ class TestServiceTickets(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Service ticket not found')
     
+    # Negative test: Update ticket without authentication
     def test_update_service_ticket_no_auth(self):
-        # Negative test: Update ticket without authentication
         update_payload = {
             "service_desc": "Updated description"
         }
@@ -224,8 +223,8 @@ class TestServiceTickets(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
     
     # ===== DELETE SERVICE TICKET TESTS =====
+    # Test deleting a service ticket by assigned mechanic
     def test_delete_service_ticket(self):
-        # Test deleting a service ticket by assigned mechanic
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.delete('/tickets/1', headers=headers)
@@ -237,106 +236,106 @@ class TestServiceTickets(unittest.TestCase):
             deleted_ticket = db.session.get(ServiceTickets, 1)
             self.assertIsNone(deleted_ticket)
     
+    # Negative test: Delete ticket by mechanic not assigned to it
     def test_delete_service_ticket_unauthorized_mechanic(self):
-        # Negative test: Delete ticket by mechanic not assigned to it
         headers = {"Authorization": "Bearer " + self.token_mechanic2}
         
         response = self.client.delete('/tickets/1', headers=headers)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json['error'], 'Unauthorized to delete this ticket')
     
+    # Negative test: Delete non-existent ticket
     def test_delete_service_ticket_not_found(self):
-        # Negative test: Delete non-existent ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.delete('/tickets/9999', headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Service ticket not found')
     
+    # Negative test: Delete ticket without authentication
     def test_delete_service_ticket_no_auth(self):
-        # Negative test: Delete ticket without authentication
         response = self.client.delete('/tickets/1')
         self.assertEqual(response.status_code, 401)
     
     # ===== ASSIGN MECHANIC TO TICKET TESTS =====
+    # Test assigning a mechanic to a ticket
     def test_assign_mechanic_to_ticket(self):
-        # Test assigning a mechanic to a ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.post('/tickets/1/mechanics/2', headers=headers)
         self.assertEqual(response.status_code, 200)
         self.assertIn('Mechanic Second Mechanic assigned to ticket 1', response.json['message'])
     
+    # Negative test: Assign mechanic already assigned to ticket
     def test_assign_mechanic_already_assigned(self):
-        # Negative test: Assign mechanic already assigned to ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.post('/tickets/1/mechanics/1', headers=headers)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json['error'], 'Mechanic already assigned to this ticket')
     
+    # Negative test: Assign mechanic to non-existent ticket
     def test_assign_mechanic_ticket_not_found(self):
-        # Negative test: Assign mechanic to non-existent ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.post('/tickets/9999/mechanics/1', headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Service ticket not found')
     
+    # Negative test: Assign non-existent mechanic to ticket
     def test_assign_mechanic_not_found(self):
-        # Negative test: Assign non-existent mechanic to ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.post('/tickets/1/mechanics/9999', headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Mechanic not found')
     
+    # Negative test: Assign mechanic without authentication
     def test_assign_mechanic_no_auth(self):
-        # Negative test: Assign mechanic without authentication
         response = self.client.post('/tickets/1/mechanics/2')
         self.assertEqual(response.status_code, 401)
     
     # ===== REMOVE MECHANIC FROM TICKET TESTS =====
+    # Test removing a mechanic from a ticket
     def test_remove_mechanic_from_ticket(self):
-        # Test removing a mechanic from a ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.delete('/tickets/1/mechanics/1', headers=headers)
         self.assertEqual(response.status_code, 200)
         self.assertIn('Mechanic Test Mechanic removed from ticket 1', response.json['message'])
     
+    # Negative test: Remove mechanic not assigned to ticket
     def test_remove_mechanic_not_assigned(self):
-        # Negative test: Remove mechanic not assigned to ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.delete('/tickets/1/mechanics/2', headers=headers)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json['error'], 'Mechanic not assigned to this ticket')
     
+    # Negative test: Remove mechanic from non-existent ticket
     def test_remove_mechanic_ticket_not_found(self):
-        # Negative test: Remove mechanic from non-existent ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.delete('/tickets/9999/mechanics/1', headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Service ticket not found')
     
+    # Negative test: Remove non-existent mechanic from ticket
     def test_remove_mechanic_not_found(self):
-        # Negative test: Remove non-existent mechanic from ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.delete('/tickets/1/mechanics/9999', headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Mechanic not found')
     
+    # Negative test: Remove mechanic without authentication
     def test_remove_mechanic_no_auth(self):
-        # Negative test: Remove mechanic without authentication
         response = self.client.delete('/tickets/1/mechanics/1')
         self.assertEqual(response.status_code, 401)
     
     # ===== ADD PART TO TICKET TESTS =====
+    # Test adding a part to a service ticket
     def test_add_part_to_ticket(self):
-        # Test adding a part to a service ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.post('/tickets/1/parts/1', headers=headers)
@@ -345,8 +344,8 @@ class TestServiceTickets(unittest.TestCase):
         self.assertEqual(response.json['part_id'], 1)
         self.assertEqual(response.json['ticket_id'], 1)
     
+    # Negative test: Add part already assigned to another ticket
     def test_add_part_already_assigned(self):
-        # Negative test: Add part already assigned to another ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         # First assign the part to ticket 1
@@ -373,30 +372,30 @@ class TestServiceTickets(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn('Part already assigned to ticket', response.json['error'])
     
+    # Negative test: Add part to non-existent ticket
     def test_add_part_ticket_not_found(self):
-        # Negative test: Add part to non-existent ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.post('/tickets/9999/parts/1', headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Service ticket not found')
     
+    # Negative test: Add non-existent part to ticket
     def test_add_part_not_found(self):
-        # Negative test: Add non-existent part to ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.post('/tickets/1/parts/9999', headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Part not found')
     
+    # Negative test: Add part without authentication
     def test_add_part_no_auth(self):
-        # Negative test: Add part without authentication
         response = self.client.post('/tickets/1/parts/1')
         self.assertEqual(response.status_code, 401)
     
     # ===== REMOVE PART FROM TICKET TESTS =====
+    # Test removing a part from a service ticket
     def test_remove_part_from_ticket(self):
-        # Test removing a part from a service ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         # First assign the part to the ticket
@@ -412,38 +411,38 @@ class TestServiceTickets(unittest.TestCase):
             part = db.session.get(Parts, 1)
             self.assertIsNone(part.ticket_id)
     
+    # Negative test: Remove part not assigned to ticket
     def test_remove_part_not_assigned(self):
-        # Negative test: Remove part not assigned to ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.delete('/tickets/1/parts/1', headers=headers)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json['error'], 'Part not assigned to this ticket')
     
+    # Negative test: Remove part from non-existent ticket
     def test_remove_part_ticket_not_found(self):
-        # Negative test: Remove part from non-existent ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.delete('/tickets/9999/parts/1', headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Service ticket not found')
     
+    # Negative test: Remove non-existent part from ticket
     def test_remove_part_not_found(self):
-        # Negative test: Remove non-existent part from ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         response = self.client.delete('/tickets/1/parts/9999', headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Part not found')
     
+    # Negative test: Remove part without authentication
     def test_remove_part_no_auth(self):
-        # Negative test: Remove part without authentication
         response = self.client.delete('/tickets/1/parts/1')
         self.assertEqual(response.status_code, 401)
     
     # ===== GET ALL PARTS FOR A TICKET TESTS =====
+    # Test getting all parts for a ticket
     def test_get_ticket_parts(self):
-        # Test getting all parts for a ticket
         headers = {"Authorization": "Bearer " + self.token_mechanic1}
         
         # First assign a part to the ticket
@@ -454,14 +453,14 @@ class TestServiceTickets(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(len(response.json) > 0)
     
+    # Test getting parts for a ticket with no parts
     def test_get_ticket_parts_empty(self):
-        # Test getting parts for a ticket with no parts
         response = self.client.get('/tickets/1/parts')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json), 0)
     
+    # Negative test: Get parts for non-existent ticket 
     def test_get_ticket_parts_not_found(self):
-        # Negative test: Get parts for non-existent ticket 
         response = self.client.get('/tickets/9999/parts')
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json['error'], 'Service ticket not found')
