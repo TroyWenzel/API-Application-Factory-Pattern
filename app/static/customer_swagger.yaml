@@ -4,9 +4,9 @@ info:
   description: 'API for managing customer accounts'
   version: '1.0.0'
 
-host: '127.0.0.1:5000'
+host: 'https://api-application-factory-pattern.onrender.com'
 schemes:
-  - "http"
+  - "https"
 consumes:
   - "application/json"
 produces:
