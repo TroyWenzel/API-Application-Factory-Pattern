@@ -5,13 +5,13 @@ from sqlalchemy import select
 from app.models import db, Inventory, Parts
 from app.blueprints.parts.schemas import inventory_schema, inventories_schema, part_schema, parts_schema
 from app.extensions import limiter
-from app.util.auth import token_required
+from app.util.auth import mechanic_token_required
 
 # ============== INVENTORY ROUTES ==============
 
 # CREATE INVENTORY ITEM
 @parts_bp.route('/inventory', methods=['POST'])
-@token_required
+@mechanic_token_required
 def create_inventory():
     try:
         new_inventory = inventory_schema.load(request.json)
@@ -41,7 +41,7 @@ def read_inventory_item(inventory_id):
 
 # UPDATE INVENTORY ITEM
 @parts_bp.route('/inventory/<int:inventory_id>', methods=['PUT'])
-@token_required
+@mechanic_token_required
 def update_inventory(inventory_id):
     inventory_item = db.session.get(Inventory, inventory_id)
     
@@ -62,23 +62,25 @@ def update_inventory(inventory_id):
 # DELETE INVENTORY ITEM
 @parts_bp.route('/inventory/<int:inventory_id>', methods=['DELETE'])
 @limiter.limit("5 per day")
-@token_required
+@mechanic_token_required
 def delete_inventory(inventory_id):
     inventory_item = db.session.get(Inventory, inventory_id)
     
     if not inventory_item:
         return jsonify({'error': 'Inventory item not found'}), 404
     
+    # SQLAlchemy will automatically delete dependent Parts due to cascade
     db.session.delete(inventory_item)
     db.session.commit()
-    return jsonify({'message': f'Inventory item {inventory_id} deleted'}), 200
+    
+    return jsonify({'message': f'Inventory item {inventory_id} deleted along with its parts'}), 200
 
 
 # ============== PARTS ROUTES ==============
 
 # CREATE PART
 @parts_bp.route('', methods=['POST'])
-@token_required
+@mechanic_token_required
 def create_part():
     try:
         new_part = part_schema.load(request.json)
@@ -108,7 +110,7 @@ def read_part(part_id):
 
 # UPDATE PART
 @parts_bp.route('/<int:part_id>', methods=['PUT'])
-@token_required
+@mechanic_token_required
 def update_part(part_id):
     part = db.session.get(Parts, part_id)
     
@@ -136,7 +138,7 @@ def update_part(part_id):
 
 # DELETE PART
 @parts_bp.route('/<int:part_id>', methods=['DELETE'])
-@token_required
+@mechanic_token_required
 def delete_part(part_id):
     part = db.session.get(Parts, part_id)
     

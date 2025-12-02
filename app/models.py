@@ -77,15 +77,15 @@ class Inventory(Base):
     
     # Relationships
     service_tickets: Mapped[list["ServiceTickets"]] = relationship(secondary=ticket_inventory, back_populates="inventory_items")
-    parts: Mapped[list["Parts"]] = relationship(back_populates="inventory_description")
+    parts: Mapped[list["Parts"]] = relationship(back_populates="inventory_description", cascade="all, delete-orphan", passive_deletes=True)
 
 # Parts table (Individual parts used on tickets)
 class Parts(Base):
     __tablename__ = 'parts'
     id: Mapped[int] = mapped_column(primary_key=True)
-    desc_id: Mapped[int] = mapped_column(ForeignKey('inventory.id'), nullable=False)
-    ticket_id: Mapped[int] = mapped_column(ForeignKey('service_tickets.id'), nullable=True)
-    
+    desc_id: Mapped[int] = mapped_column(ForeignKey('inventory.id', ondelete="CASCADE"), nullable=False)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey('service_tickets.id', ondelete="SET NULL"), nullable=True)
+
     # Relationships
     inventory_description: Mapped["Inventory"] = relationship(back_populates="parts")
     service_ticket: Mapped["ServiceTickets"] = relationship(back_populates="parts")
