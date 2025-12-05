@@ -13,7 +13,7 @@ CONFIG_MAP = {
     'testing': 'TestingConfig',
     'production': 'ProductionConfig'
 }
-swagger_blueprint = get_swaggerui_blueprint("/api/docs", "/static/customer_swagger.yaml", config = {"app_name":"Mechanic Shop API"})
+swagger_blueprint = get_swaggerui_blueprint("/api/docs", "/static/mechanic_shop_swagger.yaml", config = {"app_name":"Mechanic Shop API"})
 
 def create_app(config_name):
     app = Flask(__name__)
