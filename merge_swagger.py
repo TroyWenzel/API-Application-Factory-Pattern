@@ -1,18 +1,35 @@
 import yaml
 import os
+import sys
 
 def merge_swagger_files():
     # Merge multiple swagger files into one comprehensive API documentation
     
-    swagger_dir = 'swagger'  # Directory containing swagger files
+    # Try multiple possible locations for swagger files
+    possible_dirs = ['swagger', 'app/swagger', '.']
+    swagger_dir = None
+    
+    for dir_path in possible_dirs:
+        if os.path.exists(dir_path):
+            swagger_dir = dir_path
+            break
+    
+    if not swagger_dir:
+        print(f"Error: Could not find swagger directory in: {possible_dirs}")
+        return None
+    
+    print(f"Using swagger directory: {swagger_dir}")
     
     # Base file - this will be the foundation
     base_file = os.path.join(swagger_dir, 'mechanic_shop_swagger.yaml')
     
     if not os.path.exists(base_file):
         print(f"Error: Base file {base_file} not found!")
+        print(f"Current directory: {os.getcwd()}")
+        print(f"Files in {swagger_dir}: {os.listdir(swagger_dir) if os.path.exists(swagger_dir) else 'Directory not found'}")
         return None
     
+    print(f"Loading base file: {base_file}")
     with open(base_file, 'r') as f:
         base = yaml.safe_load(f)
     
@@ -24,28 +41,32 @@ def merge_swagger_files():
     
     # Files to merge (in order of priority)
     files_to_merge = [
-        'customer_swagger.yaml',
-        'mechanic_swagger.yaml',
         'parts_and_inventory_swagger.yaml',
         'service_tickets_swagger.yaml'
     ]
     
-    print("Starting swagger merge process...")
+    print("\nStarting swagger merge process...")
+    print(f"Base file has {len(base.get('paths', {}))} paths and {len(base.get('definitions', {}))} definitions")
     
+    merged_count = 0
     for file in files_to_merge:
         file_path = os.path.join(swagger_dir, file)
         
         if os.path.exists(file_path):
-            print(f"  - Merging {file}...")
+            print(f"\n  📄 Merging {file}...")
             try:
                 with open(file_path, 'r') as f:
                     additional = yaml.safe_load(f)
+                
+                paths_before = len(base['paths'])
+                defs_before = len(base['definitions'])
                 
                 # Merge paths
                 if 'paths' in additional:
                     for path, methods in additional['paths'].items():
                         if path in base['paths']:
                             # Merge methods for existing path
+                            print(f"    ⚠️  Path {path} already exists, merging methods...")
                             base['paths'][path].update(methods)
                         else:
                             # Add new path
@@ -53,39 +74,73 @@ def merge_swagger_files():
                 
                 # Merge definitions (schemas)
                 if 'definitions' in additional:
-                    base['definitions'].update(additional['definitions'])
+                    for def_name, def_schema in additional['definitions'].items():
+                        if def_name in base['definitions']:
+                            print(f"    ⚠️  Definition {def_name} already exists, skipping...")
+                        else:
+                            base['definitions'][def_name] = def_schema
                 
-                # Merge tags if they exist
-                if 'tags' in additional:
-                    if 'tags' not in base:
-                        base['tags'] = []
-                    for tag in additional['tags']:
-                        if tag not in base['tags']:
-                            base['tags'].append(tag)
+                paths_after = len(base['paths'])
+                defs_after = len(base['definitions'])
+                
+                print(f"    ✓ Added {paths_after - paths_before} paths, {defs_after - defs_before} definitions")
+                merged_count += 1
                 
             except Exception as e:
-                print(f"    ERROR merging {file}: {e}")
+                print(f"    ❌ ERROR merging {file}: {e}")
+                import traceback
+                traceback.print_exc()
         else:
-            print(f"  - Warning: {file} not found, skipping...")
+            print(f"  ⚠️  Warning: {file} not found at {file_path}, skipping...")
+    
+    # Ensure static directory exists
+    static_dir = 'static'
+    if not os.path.exists(static_dir):
+        os.makedirs(static_dir)
+        print(f"\n📁 Created {static_dir} directory")
     
     # Write the merged file to static directory for Flask
-    output_file = 'static/mechanic_shop_swagger.yaml'
-    os.makedirs('static', exist_ok=True)
+    output_file = os.path.join(static_dir, 'mechanic_shop_swagger.yaml')
     
-    with open(output_file, 'w') as f:
-        yaml.dump(base, f, default_flow_style=False, sort_keys=False)
-    
-    print(f"\n✓ Swagger files merged successfully!")
-    print(f"  Output: {output_file}")
-    print(f"  Total paths: {len(base['paths'])}")
-    print(f"  Total definitions: {len(base['definitions'])}")
+    try:
+        with open(output_file, 'w') as f:
+            yaml.dump(base, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+        
+        print(f"\n✅ Swagger files merged successfully!")
+        print(f"   Output: {output_file}")
+        print(f"   Total paths: {len(base['paths'])}")
+        print(f"   Total definitions: {len(base['definitions'])}")
+        print(f"   Files merged: {merged_count}/{len(files_to_merge)}")
+        
+        # List all paths for verification
+        print(f"\n📋 Available endpoints:")
+        for path in sorted(base['paths'].keys()):
+            methods = list(base['paths'][path].keys())
+            print(f"   {path}: {', '.join(methods)}")
+        
+    except Exception as e:
+        print(f"\n❌ ERROR writing merged file: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
     
     return base
 
-if __name__ == '__main__':
+# Auto-run when imported
+try:
     merged_swagger = merge_swagger_files()
-    
+    if not merged_swagger:
+        print("\n⚠️  WARNING: Swagger merge failed! API documentation may be incomplete.")
+except Exception as e:
+    print(f"\n❌ CRITICAL ERROR during swagger merge: {e}")
+    import traceback
+    traceback.print_exc()
+    merged_swagger = None
+
+if __name__ == '__main__':
+    # Run the merge when executed directly
     if merged_swagger:
-        print("\nMerge complete! You can now access the API docs at /api/docs")
+        print("\n🎉 Merge complete! You can now access the API docs at /api/docs")
     else:
-        print("\nMerge failed! Please check the error messages above.")
+        print("\n❌ Merge failed! Please check the error messages above.")
+        sys.exit(1)
