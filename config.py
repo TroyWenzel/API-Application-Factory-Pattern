@@ -19,7 +19,15 @@ class TestingConfig:
 
 class ProductionConfig:
     SECRET_KEY = os.environ.get('SECRET_KEY')
-    SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or 'sqlite:///production.db'
+
+    # Render provides DATABASE_URL, not SQLALCHEMY_DATABASE_URI
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+
+    # SQLAlchemy doesn't accept postgres://, needs postgresql://
+    if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL or 'sqlite:///production.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = False
     CACHE_TYPE = "SimpleCache"

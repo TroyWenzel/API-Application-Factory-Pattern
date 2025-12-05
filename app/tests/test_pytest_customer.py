@@ -215,9 +215,7 @@ class TestGetMyTickets:
     
     def test_get_my_tickets_invalid_token(self, client):
         # Test accessing tickets with invalid token
-        response = client.get('/customers/my-tickets', headers={
-            'Authorization': 'Bearer invalid_token_here'
-        })
+        response = client.get('/customers/my-tickets', headers={'Authorization': 'Bearer invalid_token_here'})
         
         assert response.status_code == 401
 
@@ -227,9 +225,7 @@ class TestGetProfile:
     
     def test_get_profile_success(self, client, customer_token, sample_customer):
         # Test retrieving customer profile with valid token
-        response = client.get('/customers/profile', headers={
-            'Authorization': f'Bearer {customer_token}'
-        })
+        response = client.get('/customers/profile', headers={'Authorization': f'Bearer {customer_token}'})
         
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -244,9 +240,7 @@ class TestGetProfile:
     
     def test_get_profile_invalid_token(self, client):
         # Test accessing profile with invalid token
-        response = client.get('/customers/profile', headers={
-            'Authorization': 'Bearer invalid_token'
-        })
+        response = client.get('/customers/profile', headers={'Authorization': 'Bearer invalid_token'})
         
         assert response.status_code == 401
 
@@ -381,9 +375,7 @@ class TestUpdateCustomer:
     
     def test_update_customer_no_token(self, client):
         # Test updating customer without authentication token
-        response = client.put('/customers', json={
-            'first_name': 'UpdatedName'
-        })
+        response = client.put('/customers', json={'first_name': 'UpdatedName'})
         
         assert response.status_code == 401
     

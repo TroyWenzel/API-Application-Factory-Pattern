@@ -11,7 +11,6 @@ from app.blueprints.parts.schemas import parts_schema
 # CREATE SERVICE TICKET
 @service_tickets_bp.route('', methods=['POST'])
 @limiter.limit("10 per day")
-@limiter.limit("5 per day")
 @mechanic_token_required
 def create_service_ticket():
     try:

@@ -88,9 +88,7 @@ class TestCustomerLogin(BaseTestCase):
     def test_login_missing_fields(self):
         # Test login with missing required fields
         response = self.client.post('/customers/login',
-            data=json.dumps({
-                'email': 'john.doe@example.com'
-            }),
+            data=json.dumps({'email': 'john.doe@example.com'}),
             content_type='application/json'
         )
         
@@ -135,8 +133,7 @@ class TestCreateCustomer(BaseTestCase):
         response = self.client.post('/customers',
             data=json.dumps({
                 'first_name': 'Jane',
-                'email': 'jane@example.com'
-            }),
+                'email': 'jane@example.com'}),
             content_type='application/json'
         )
         

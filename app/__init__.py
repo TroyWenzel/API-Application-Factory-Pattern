@@ -5,6 +5,7 @@ from app.blueprints.customers import customers_bp
 from app.blueprints.mechanics import mechanics_bp
 from app.blueprints.service_tickets import service_tickets_bp
 from app.blueprints.parts import parts_bp
+from flask_swagger_ui import get_swaggerui_blueprint
 
 # Config name mapping for convenience
 CONFIG_MAP = {
@@ -12,6 +13,7 @@ CONFIG_MAP = {
     'testing': 'TestingConfig',
     'production': 'ProductionConfig'
 }
+swagger_blueprint = get_swaggerui_blueprint("/api/docs", "/static/customer_swagger.yaml", config = {"app_name":"Customer Management API"})
 
 def create_app(config_name):
     app = Flask(__name__)
@@ -31,5 +33,6 @@ def create_app(config_name):
     app.register_blueprint(mechanics_bp, url_prefix='/mechanics')
     app.register_blueprint(service_tickets_bp, url_prefix='/tickets')
     app.register_blueprint(parts_bp, url_prefix='/parts')
+    app.register_blueprint(swagger_blueprint, url_prefix='/api/docs')
 
     return app
