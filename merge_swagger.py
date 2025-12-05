@@ -5,17 +5,11 @@ import sys
 def merge_swagger_files():
     # Merge multiple swagger files into one comprehensive API documentation
     
-    # Try multiple possible locations for swagger files
-    possible_dirs = ['swagger', 'app/swagger', '.']
-    swagger_dir = None
+    # Swagger files are in the static directory
+    swagger_dir = 'static'
     
-    for dir_path in possible_dirs:
-        if os.path.exists(dir_path):
-            swagger_dir = dir_path
-            break
-    
-    if not swagger_dir:
-        print(f"Error: Could not find swagger directory in: {possible_dirs}")
+    if not os.path.exists(swagger_dir):
+        print(f"Error: Static directory not found: {swagger_dir}")
         return None
     
     print(f"Using swagger directory: {swagger_dir}")
@@ -39,7 +33,7 @@ def merge_swagger_files():
     if 'definitions' not in base:
         base['definitions'] = {}
     
-    # Files to merge (in order of priority)
+    # Files to merge (these are also in static/)
     files_to_merge = [
         'parts_and_inventory_swagger.yaml',
         'service_tickets_swagger.yaml'
@@ -93,14 +87,8 @@ def merge_swagger_files():
         else:
             print(f"  ⚠️  Warning: {file} not found at {file_path}, skipping...")
     
-    # Ensure static directory exists
-    static_dir = 'static'
-    if not os.path.exists(static_dir):
-        os.makedirs(static_dir)
-        print(f"\n📁 Created {static_dir} directory")
-    
-    # Write the merged file to static directory for Flask
-    output_file = os.path.join(static_dir, 'mechanic_shop_swagger.yaml')
+    # Write the merged file back to static directory
+    output_file = os.path.join(swagger_dir, 'mechanic_shop_swagger.yaml')
     
     try:
         with open(output_file, 'w') as f:
