@@ -514,14 +514,6 @@ definitions:
       - email
       - password
 
-  LoginResponse:
-    type: object
-    properties:
-      message:
-        type: string
-      token:
-        type: string
-
   MechanicInput:
     type: object
     properties:
